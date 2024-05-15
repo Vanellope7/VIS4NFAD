@@ -1,6 +1,7 @@
-<script setup>
-</script>
-
 <template>
-VIS4NFAD
+  <HcnData/>
 </template>
+
+<script setup>
+import HcnData from '../components/Hcn-Data.vue'
+</script>
