@@ -1,7 +1,11 @@
 <template>
     <div ref="chartContainer" class="chart-container">
+        <div ref="sliderContainer" class="slider-container">
+            <label for="smoothness">Smoothness:</label>
+            <input type="range" id="smoothness" name="smoothness" min="0" max="1" step="0.01" v-model="smoothness">
+        </div>
         <div ref="chart"></div>
-        <div ref="slider" class="slider-container"></div>
+        <div ref="overview" class="overview-container"></div>
         <div ref="legend" class="legend-container"></div>
     </div>
 </template>
@@ -9,11 +13,12 @@
 <script setup>
 import * as d3 from 'd3';
 import axios from 'axios';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 const chart = ref(null);
-const slider = ref(null);
+const overview = ref(null);
 const legend = ref(null);
+const smoothness = ref(0.0);
 
 onMounted(async () => {
     try {
@@ -23,10 +28,10 @@ onMounted(async () => {
         const hcn = data.hcn;
         const time = data.time;
 
-        const margin = { top: 20, right: 160, bottom: 60, left: 60 },
+        const margin = { top: 10, right: 160, bottom: 30, left: 60 },
             width = 1250 - margin.left - margin.right,
             height = 600 - margin.top - margin.bottom,
-            sliderHeight = 50;
+            overviewHeight = 50;
 
         const svg = d3.select(chart.value)
             .append("svg")
@@ -47,8 +52,8 @@ onMounted(async () => {
 
         const xMin = d3.min(time) - 0.5;
         const xMax = d3.max(time);
-        const yMin = d3.min(hcn, d => d3.min(d.filter(val => val !== null))) - 50;
-        const yMax = d3.max(hcn, d => d3.max(d.filter(val => val !== null))) + 50;
+        const yMin = d3.min(hcn, d => d3.min(d.filter(val => val !== null))) - 25;
+        const yMax = d3.max(hcn, d => d3.max(d.filter(val => val !== null))) + 25;
 
         const x = d3.scaleLinear()
             .domain([xMin, xMax])
@@ -80,26 +85,6 @@ onMounted(async () => {
             .attr("transform", `translate(${margin.left},${margin.top})`)
             .call(yAxis);
 
-        const xSubAxis = d3.axisBottom(x)
-            .ticks(100)
-            .tickSize(-6)
-            .tickFormat('');
-
-        const ySubAxis = d3.axisLeft(y)
-            .ticks(50)
-            .tickSize(-6)
-            .tickFormat('');
-
-        svg.append("g")
-            .attr("class", "x-sub-axis")
-            .attr("transform", `translate(${margin.left},${margin.top + height})`)
-            .call(xSubAxis);
-
-        svg.append("g")
-            .attr("class", "y-sub-axis")
-            .attr("transform", `translate(${margin.left},${margin.top})`)
-            .call(ySubAxis);
-
         const makeXGridlines = () => d3.axisBottom(x).ticks(10);
         const makeYGridlines = () => d3.axisLeft(y).ticks(10);
 
@@ -124,7 +109,7 @@ onMounted(async () => {
             .style("opacity", 0.3);
 
         svg.append("text")
-            .attr("transform", `translate(${margin.left + width / 2}, ${margin.top + height + margin.bottom - 20})`)
+            .attr("transform", `translate(${margin.left + width / 2}, ${margin.top + height + margin.bottom + 0})`)
             .attr("text-anchor", "middle")
             .style("font-size", "16px")
             .text("Time(s)");
@@ -138,42 +123,12 @@ onMounted(async () => {
             .style("font-size", "16px")
             .text("10^7/m^2");
 
-        const focus = chartArea.append("g")
-            .attr("class", "focus")
-            .style("display", "none");
-
-        focus.append("circle")
-            .attr("r", 4.5);
-
-        focus.append("text")
-            .attr("x", 9)
-            .attr("dy", ".35em");
-
-        svg.append("rect")
-            .attr("class", "overlay")
-            .attr("width", width)
-            .attr("height", height)
-            .style("fill", "none")
-            .style("pointer-events", "all")
-            .attr("transform", `translate(${margin.left},${margin.top})`)
-            .on("mouseover", () => focus.style("display", null))
-            .on("mouseout", () => focus.style("display", "none"))
-            .on("mousemove", mousemove);
-
-        const bisectTime = d3.bisector(d => d).left;
-
-        function mousemove(event) {
-            const x0 = x.invert(d3.pointer(event)[0]);
-            const i = bisectTime(time, x0, 1);
-            const d0 = time[i - 1];
-            const d1 = time[i];
-            const d = x0 - d0 > d1 - x0 ? d1 : d0;
-
-            focus.attr("transform", `translate(${x(d)},${y(hcn[0][time.indexOf(d)])})`);
-            focus.select("text").text(d);
-        }
-
         const paths = [];
+
+        const lineGenerator = d3.line()
+            .x(d => x(d.x))
+            .y(d => y(d.y))
+            .curve(d3.curveBasis);
 
         hcn.forEach((lineData, index) => {
             const path = chartArea.append("path")
@@ -182,9 +137,7 @@ onMounted(async () => {
                 .attr("stroke", d3.schemeCategory10[index % 10])
                 .attr("stroke-width", 1.5)
                 .attr("class", `line line-${index}`)
-                .attr("d", d3.line()
-                    .x(d => x(d.x))
-                    .y(d => y(d.y)));
+                .attr("d", lineGenerator);
 
             paths.push(path);
 
@@ -209,7 +162,7 @@ onMounted(async () => {
             d3.select(chart.value).append('div')
                 .style('position', 'absolute')
                 .style('left', `${width + margin.left + 110}px`)
-                .style('top', `${margin.top + index * 20 - 7}px`)
+                .style('top', `${margin.top + index * 20 + 18}px`)
                 .html(`<input type="checkbox" checked="checked" id="checkbox-${index}" />`)
                 .on('change', function () {
                     const checked = d3.select(`#checkbox-${index}`).property('checked');
@@ -221,22 +174,16 @@ onMounted(async () => {
         const legendContainer = d3.select(legend.value)
             .append('div')
             .style('position', 'absolute')
-            .style('left', `${width + margin.left + 10}px`)
-            .style('top', `${margin.top + hcn.length * 20 + 10}px`)
+            .style('left', `${width + margin.left + 15}px`)
+            .style('top', `${margin.top + hcn.length * 20 + 40}px`)
             .style('display', 'flex')
             .style('gap', '10px')
-            .style('align-items', 'center'); // 垂直居中对齐
-
-        // 获取图例复选框的右边界
-        const legendRightBoundary = width + margin.left + 160;
-
-        // 将按钮右边界与图例对齐
-        legendContainer.style('left', `${legendRightBoundary - legendContainer.node().getBoundingClientRect().width}px`);
+            .style('align-items', 'center');
 
         legendContainer.append('button')
             .text('全选')
             .attr('class', 'legend-button')
-            .style('font-size', '12px') // 调整字体大小
+            .style('font-size', '12px')
             .on('click', () => {
                 d3.selectAll('input[type=checkbox]').property('checked', true);
                 d3.selectAll('.line').style('display', null);
@@ -245,93 +192,63 @@ onMounted(async () => {
         legendContainer.append('button')
             .text('清空')
             .attr('class', 'legend-button')
-            .style('font-size', '12px') // 调整字体大小
+            .style('font-size', '12px')
             .on('click', () => {
                 d3.selectAll('input[type=checkbox]').property('checked', false);
                 d3.selectAll('.line').style('display', 'none');
             });
 
-
-        const zoom = d3.zoom()
-            .scaleExtent([1, 10])
-            .translateExtent([[0, 0], [width, height]])
-            .extent([[0, 0], [width, height]])
-            .on("zoom", zoomed);
-
-        svg.append("rect")
-            .attr("class", "zoom")
-            .attr("width", width)
-            .attr("height", height)
-            .style("fill", "none")
-            .style("pointer-events", "all")
-            .attr("transform", `translate(${margin.left},${margin.top})`)
-            .call(zoom);
-
-        function zoomed(event) {
-            const newX = event.transform.rescaleX(x);
-
-            svg.selectAll(".x-axis").call(d3.axisBottom(newX).ticks(10));
-            svg.selectAll(".x-sub-axis").call(d3.axisBottom(newX).ticks(100).tickSize(-6).tickFormat(''));
-
-            paths.forEach((path, index) => {
-                if (d3.select(`#checkbox-${index}`).property("checked")) {
-                    path.attr("d", d3.line()
-                        .x(d => newX(d.x))
-                        .y(d => y(d.y)));
-                }
-            });
-
-            svg.selectAll(".grid-x")
-                .call(makeXGridlines().scale(newX).tickSize(-height).tickFormat(""))
-                .selectAll("line")
-                .style("stroke-dasharray", ("3, 3"))
-                .style("opacity", 0.3);
-
-            // 更新滑块
-            d3.select(slider.value).call(brush.move, newX.range().map(event.transform.invertX, event.transform));
-        }
-
-        // 创建滑块
-        const sliderSvg = d3.select(slider.value)
+        // Overview chart
+        const overviewSvg = d3.select(overview.value)
             .append("svg")
             .attr("width", width + margin.left + margin.right)
-            .attr("height", sliderHeight)
+            .attr("height", overviewHeight + margin.top + margin.bottom)
             .append("g")
-            .attr("transform", `translate(${margin.left},${sliderHeight / 100})`);
+            .attr("transform", `translate(${margin.left},${margin.top})`);
 
-        const xSlider = d3.scaleLinear()
+        const xOverview = d3.scaleLinear()
             .domain([xMin, xMax])
             .range([0, width]);
 
-        sliderSvg.append("g")
+        const yOverview = d3.scaleLinear()
+            .domain([yMin, yMax])
+            .range([overviewHeight, 0]);
+
+        overviewSvg.append("g")
             .attr("class", "x-axis")
-            .attr("transform", `translate(0,${sliderHeight / 4})`)
-            .call(d3.axisBottom(xSlider).ticks(10).tickFormat(d3.format(".1f")));
+            .attr("transform", `translate(0,${overviewHeight})`)
+            .call(d3.axisBottom(xOverview).ticks(10).tickFormat(d3.format(".1f")));
+
+        hcn.forEach((lineData, index) => {
+            overviewSvg.append("path")
+                .datum(lineData.map((d, i) => ({ x: time[i], y: d })).filter(d => d.y !== null))
+                .attr("fill", "none")
+                .attr("stroke", d3.schemeCategory10[index % 10])
+                .attr("stroke-width", 1)
+                .attr("d", d3.line()
+                    .x(d => xOverview(d.x))
+                    .y(d => yOverview(d.y))
+                    .curve(d3.curveBasis));
+        });
 
         const brush = d3.brushX()
-            .extent([[0, 0], [width, sliderHeight / 2]])
+            .extent([[0, 0], [width, overviewHeight]])
             .on("brush end", brushed);
 
-        sliderSvg.append("g")
+        overviewSvg.append("g")
             .attr("class", "brush")
-            .call(brush)
-            .call(brush.move, x.range());
+            .call(brush);
 
         function brushed(event) {
-            if (event.sourceEvent && event.sourceEvent.type === "zoom") return; // 忽略 zoom 事件触发的 brush 事件
-
-            const selection = event.selection || xSlider.range();
-            const newX = selection.map(xSlider.invert, xSlider);
+            const selection = event.selection || xOverview.range();
+            const newX = selection.map(xOverview.invert, xOverview);
 
             x.domain(newX);
-            svg.selectAll(".x-axis").call(d3.axisBottom(x).ticks(10));
-            svg.selectAll(".x-sub-axis").call(d3.axisBottom(x).ticks(100).tickSize(-6).tickFormat(''));
+            svg.selectAll(".x-axis").call(d3.axisBottom(x).ticks(10).tickFormat(d3.format(".1f")));
 
             paths.forEach((path, index) => {
                 if (d3.select(`#checkbox-${index}`).property("checked")) {
-                    path.attr("d", d3.line()
-                        .x(d => x(d.x))
-                        .y(d => y(d.y)));
+                    path.attr("d", lineGenerator);
                 }
             });
 
@@ -340,10 +257,38 @@ onMounted(async () => {
                 .selectAll("line")
                 .style("stroke-dasharray", ("3, 3"))
                 .style("opacity", 0.3);
+        }
 
-            svg.call(zoom.transform, d3.zoomIdentity
-                .scale(width / (selection[1] - selection[0]))
-                .translate(-selection[0], 0));
+        watch(smoothness, () => {
+            paths.forEach((path, index) => {
+                if (d3.select(`#checkbox-${index}`).property("checked")) {
+                    const lineData = hcn[index].map((d, i) => ({ x: time[i], y: d })).filter(d => d.y !== null);
+                    const interpolatedData = interpolateData(lineData, smoothness.value);
+                    path.datum(interpolatedData).attr("d", lineGenerator.curve(d3.curveBasis));
+                }
+            });
+        });
+
+        function interpolateData(data, t) {
+            if (t === 1) {
+                return [
+                    { x: data[0].x, y: d3.mean(data, d => d.y) },
+                    { x: data[data.length - 1].x, y: d3.mean(data, d => d.y) }
+                ];
+            } else {
+                return data.map((d, i, a) => {
+                    if (i === 0 || i === a.length - 1) {
+                        return d;
+                    } else {
+                        const prev = a[i - 1];
+                        const next = a[i + 1];
+                        return {
+                            x: d.x,
+                            y: d.y * (1 - t) + ((prev.y + next.y) / 2) * t
+                        };
+                    }
+                });
+            }
         }
     } catch (error) {
         console.error("Error fetching data:", error);
@@ -358,9 +303,9 @@ onMounted(async () => {
     height: 100%;
 }
 
-.slider-container {
+.overview-container {
     width: 80%;
-    height: 50px;
+    height: 100px;
 }
 
 .legend-container {
@@ -369,23 +314,23 @@ onMounted(async () => {
     margin-top: 10px;
 }
 
+.slider-container {
+    width: 100%;
+    margin-top: 10px;
+}
+
 .legend-button {
     background-color: #4CAF50;
-    /* 绿色背景 */
     border: none;
     color: white;
-    /* 白色文字 */
     padding: 8px 16px;
-    /* 调整填充 */
     text-align: center;
     text-decoration: none;
     display: inline-block;
     font-size: 12px;
-    /* 调整字体大小 */
     margin: 4px 2px;
     cursor: pointer;
     border-radius: 5px;
-    /* 圆角 */
 }
 
 svg {
@@ -401,11 +346,6 @@ svg {
 .overlay {
     fill: none;
     pointer-events: all;
-}
-
-.focus circle {
-    fill: none;
-    stroke: steelblue;
 }
 
 .zoom {

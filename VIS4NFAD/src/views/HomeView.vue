@@ -1,7 +1,15 @@
 <template>
-  <HcnData/>
+  <div class="QetchHcn">
+    <QetchHcn/>
+  </div>
 </template>
 
 <script setup>
-import HcnData from '../components/Hcn-Data.vue'
+import QetchHcn from '../components/Qetch-Hcn.vue'
 </script>
+
+<style scoped>
+.QetchHcn{
+  scale:1;
+}
+</style>
