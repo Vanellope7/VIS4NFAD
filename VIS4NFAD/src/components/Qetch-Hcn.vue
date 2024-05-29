@@ -1,12 +1,13 @@
 <template>
     <div class="container">
-      <el-card class="dataset-card"><HcnData/></el-card>
+      <el-card class="dataset-card"><HcnData/>
+      </el-card>
       <div class="main-content">
-        <div class="query-section">
+        <div class="query-section full-height">
           <el-card><SketchHcn/></el-card>
         </div>
-        <div class="result-section">
-          <el-card>Result</el-card>
+        <div class="result-section full-height">
+          <el-card><ResultHcn/></el-card>
         </div>
       </div>
     </div>
@@ -34,6 +35,7 @@
   
   .dataset-card {
     flex: 0 0 auto;
+    margin: 0 auto;
   }
   
   .query-section {
@@ -43,5 +45,11 @@
   .result-section {
     flex: 3;
   }
+
+  .full-height {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
   </style>
   

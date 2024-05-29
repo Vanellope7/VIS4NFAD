@@ -1,5 +1,5 @@
 <template>
-  <div class="QetchHcn">
+  <div>
     <QetchHcn/>
   </div>
 </template>
@@ -9,7 +9,4 @@ import QetchHcn from '../components/Qetch-Hcn.vue'
 </script>
 
 <style scoped>
-.QetchHcn{
-  scale:1;
-}
 </style>
