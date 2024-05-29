@@ -6,6 +6,7 @@
         <button @click="togglePenTool">Toggle Pen Tool</button>
         <button @click="clearCanvas">Clear</button>
         <button @click="saveDrawing">Save</button>
+        <button @click="submitDrawing">Submit</button> <!-- 提交按钮 -->
       </div>
     </div>
     <div class="main-container">
@@ -47,6 +48,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import axios from 'axios';
 import { fabric } from 'fabric';
 import 'element-plus/dist/index.css';
 
@@ -97,6 +99,19 @@ const loadDrawing = (index) => {
 const deleteDrawing = (index) => {
   savedDrawings.value.splice(index, 1);
 };
+
+const submitDrawing = () => {
+  const drawingData = fabricCanvas.toJSON();
+  axios.post('http://127.0.0.1:5000/submit', { drawing: drawingData })
+    .then(response => {
+      console.log('Drawing submitted:', response.data);
+    })
+    .catch(error => {
+      console.error('Error submitting drawing:', error);
+    });
+};
+
+
 
 const selectPredefinedQuery = (query) => {
   // Add functionality to handle predefined queries
