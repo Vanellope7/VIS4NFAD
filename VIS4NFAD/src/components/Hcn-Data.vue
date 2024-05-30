@@ -1,8 +1,9 @@
 <template>
     <div ref="chartContainer" class="chart-container">
         <div ref="sliderContainer" class="slider-container">
-            <label for="smoothness">Smoothness:</label>
+            <label for="smoothness">Smoothness: </label>
             <input type="range" id="smoothness" name="smoothness" min="0" max="1" step="0.01" v-model="smoothness">
+            <span>{{ smoothness }}</span>
         </div>
         <div ref="chart"></div>
         <div ref="overview" class="overview-container"></div>
@@ -14,6 +15,7 @@
 import * as d3 from 'd3';
 import axios from 'axios';
 import { onMounted, ref, watch } from 'vue';
+import { ElButton } from 'element-plus';
 
 const chart = ref(null);
 const overview = ref(null);
@@ -317,6 +319,9 @@ onMounted(async () => {
 .slider-container {
     width: 100%;
     margin-top: 10px;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
 }
 
 .legend-button {

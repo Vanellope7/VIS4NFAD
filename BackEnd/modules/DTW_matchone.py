@@ -36,7 +36,9 @@ def flatten_and_filter(data):
     return flat_data
 
 
-hcn_coords = flatten_and_filter(hcn_data['hcn'])
+# 只提取hcn数据中的第一条数据
+hcn_first_data = hcn_data['hcn'][10] if isinstance(hcn_data['hcn'], list) and len(hcn_data['hcn']) > 0 else []
+hcn_coords = flatten_and_filter(hcn_first_data)
 hcn_coords = np.array(hcn_coords)
 
 
@@ -45,12 +47,12 @@ def normalize(data):
     data = np.array(data)
     data_min = np.min(data, axis=0)
     data_max = np.max(data, axis=0)
-    return (data - data_min) / (data_max - data_min)
+    return (data - data_min) / (data_max - data_min), data_min, data_max
 
 
 # 归一化手绘数据和hcn数据
-drawing_coords = normalize(drawing_coords)
-hcn_coords = normalize(hcn_coords)
+drawing_coords_norm, drawing_min, drawing_max = normalize(drawing_coords)
+hcn_coords_norm, hcn_min, hcn_max = normalize(hcn_coords)
 
 
 # 计算相似度的函数，使用DTW算法
@@ -60,12 +62,12 @@ def calculate_similarity(args):
     return distance
 
 
-# 找到前20个最匹配的段落
-def find_top_matches(drawing_coords, hcn_coords, window_size=100, top_n=20):
+# 找到前10个最匹配的段落
+def find_top_matches(drawing_coords, hcn_coords, hcn_coords_norm, window_size=100, top_n=10):
     top_matches = []
     total_segments = len(hcn_coords) - window_size + 1
 
-    segments = [(drawing_coords, np.array([(x, y) for x, y in enumerate(hcn_coords[i:i + window_size])])) for i in
+    segments = [(drawing_coords, np.array([(x, y) for x, y in enumerate(hcn_coords_norm[i:i + window_size])])) for i in
                 range(total_segments)]
 
     # 使用多进程池并行计算
@@ -87,12 +89,13 @@ def find_top_matches(drawing_coords, hcn_coords, window_size=100, top_n=20):
     return top_matches
 
 
-# 找到前20个最匹配的段落
-top_matches = find_top_matches(drawing_coords, hcn_coords)
+if __name__ == "__main__":
+    # 找到前10个最匹配的段落
+    top_matches = find_top_matches(drawing_coords_norm, hcn_coords, hcn_coords_norm)
 
-# 打印前20名匹配的段落及其距离
-for i, (distance, match) in enumerate(top_matches):
-    print(f"匹配段落 {i + 1}:")
-    print("距离:", distance)
-    print("段落数据:", match)
-    print("\n")
+    # 打印前10名匹配的段落及其距离
+    for i, (distance, match) in enumerate(top_matches):
+        print(f"匹配段落 {i + 1}:")
+        print("距离:", distance)
+        print("段落数据:", match)
+        print("\n")

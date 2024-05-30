@@ -3,10 +3,10 @@
     <div class="canvas-header">
       <div class="query-title">Query</div>
       <div class="header-buttons">
-        <button @click="togglePenTool">Toggle Pen Tool</button>
-        <button @click="clearCanvas">Clear</button>
-        <button @click="saveDrawing">Save</button>
-        <button @click="submitDrawing">Submit</button> <!-- 提交按钮 -->
+        <el-switch v-model="isPenToolActive" active-text="Pen" inactive-text="Zoom" />
+        <el-button round @click="clearCanvas" size="small" type="danger">Clear</el-button>
+        <el-button round @click="saveDrawing" size="small" type="success">Save</el-button>
+        <el-button round @click="submitDrawing" size="small" type="primary">Submit</el-button>
       </div>
     </div>
     <div class="main-container">
@@ -21,10 +21,12 @@
             <h3>History</h3>
           </div>
         </template>
-        <div class="history-content">
-          <div v-for="(drawing, index) in savedDrawings" :key="index" class="history-item">
-            <img :src="drawing.thumbnail" :alt="'Drawing ' + (index + 1)" @click="loadDrawing(index)">
-            <button class="delete-button" @click="deleteDrawing(index)">Delete</button>
+        <div class="history-content-container">
+          <div class="history-content">
+            <div v-for="(drawing, index) in savedDrawings" :key="index" class="history-item">
+              <img :src="drawing.thumbnail" :alt="'Drawing ' + (index + 1)" @click="loadDrawing(index)">
+              <button class="delete-button" @click="deleteDrawing(index)">Delete</button>
+            </div>
           </div>
         </div>
       </el-card>
@@ -47,14 +49,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import axios from 'axios';
 import { fabric } from 'fabric';
 import 'element-plus/dist/index.css';
 
 const canvas = ref(null);
 let fabricCanvas = null;
-let isPenToolActive = false;
+const isPenToolActive = ref(true);
 let path, isDrawing, points = [];
 const predefinedQueries = [
   // Add paths to predefined curve thumbnails here
@@ -66,17 +68,6 @@ const savedDrawings = ref([]);
 
 const clearCanvas = () => {
   fabricCanvas.clear();
-};
-
-const togglePenTool = () => {
-  isPenToolActive = !isPenToolActive;
-  if (isPenToolActive) {
-    fabricCanvas.isDrawingMode = false;
-    fabricCanvas.selection = false;
-  } else {
-    fabricCanvas.isDrawingMode = true;
-    fabricCanvas.selection = true;
-  }
 };
 
 const saveDrawing = () => {
@@ -111,16 +102,14 @@ const submitDrawing = () => {
     });
 };
 
-
-
 const selectPredefinedQuery = (query) => {
   // Add functionality to handle predefined queries
 };
 
 const initCanvas = () => {
   fabricCanvas = new fabric.Canvas(canvas.value, {
-    width: 600,
-    height: 400,
+    width: 370,
+    height: 450,
     backgroundColor: '#fff',
   });
 
@@ -128,7 +117,7 @@ const initCanvas = () => {
   fabricCanvas.isDrawingMode = true;
 
   fabricCanvas.on('mouse:down', function (o) {
-    if (isPenToolActive) {
+    if (isPenToolActive.value) {
       isDrawing = true;
       const pointer = fabricCanvas.getPointer(o.e);
       points = [{ x: pointer.x, y: pointer.y }];
@@ -142,7 +131,7 @@ const initCanvas = () => {
   });
 
   fabricCanvas.on('mouse:move', function (o) {
-    if (isPenToolActive && isDrawing) {
+    if (isPenToolActive.value && isDrawing) {
       const pointer = fabricCanvas.getPointer(o.e);
       const lastPoint = points[points.length - 1];
       if (pointer.x >= lastPoint.x) {
@@ -156,7 +145,7 @@ const initCanvas = () => {
   });
 
   fabricCanvas.on('mouse:up', function () {
-    if (isPenToolActive) {
+    if (isPenToolActive.value) {
       isDrawing = false;
       points = [];
       const pathData = path.path[0].slice(1);
@@ -170,7 +159,7 @@ const initCanvas = () => {
 
   fabricCanvas.on('object:selected', function (e) {
     const activeObject = e.target;
-    if (isPenToolActive) {
+    if (isPenToolActive.value) {
       activeObject.set({
         borderColor: 'red',
         cornerColor: 'green',
@@ -178,6 +167,11 @@ const initCanvas = () => {
         transparentCorners: false,
       });
     }
+  });
+
+  watch(isPenToolActive, (newVal) => {
+    fabricCanvas.isDrawingMode = newVal;
+    fabricCanvas.selection = !newVal;
   });
 };
 
@@ -211,13 +205,13 @@ onMounted(() => {
 
 .main-container {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
 }
 
 .canvas-card {
-  flex-grow: 1;
-  height: 400px;
-  margin-right: 20px;
+  height: 470px;
+  width: 100%;
 }
 
 .canvas-container {
@@ -226,38 +220,44 @@ onMounted(() => {
 }
 
 .history-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 400px;
-  overflow-y: auto;
-  width: 250px;
+  width: 100%;
+  height: 200px;
+  /* Maintain the original height */
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Hide vertical scrollbar */
+  margin-top: 10px;
 }
 
 .history-title {
   font-size: 18px;
   font-weight: bold;
-  margin-bottom: 10px;
   flex-shrink: 0;
 }
 
+.history-content-container {
+  width: 370px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
 .history-content {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  width: 100%;
+  display: inline-flex;
+  gap: 10px;
+  padding: 5px;
 }
 
 .history-item {
   width: 70px;
   height: 70px;
-  margin: 5px;
   position: relative;
   border: 1px solid #ccc;
   display: flex;
   justify-content: center;
   align-items: center;
   background-color: #f9f9f9;
+  flex-shrink: 0;
+  /* Prevent items from shrinking */
 }
 
 .history-item img {
@@ -313,6 +313,10 @@ onMounted(() => {
   padding: 12px 16px;
   text-decoration: none;
   display: block;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
 }
 
 .dropdown .dropdown-content button:hover {
