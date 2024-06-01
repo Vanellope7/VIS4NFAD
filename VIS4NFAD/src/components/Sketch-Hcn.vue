@@ -93,14 +93,17 @@ const deleteDrawing = (index) => {
 
 const submitDrawing = () => {
   const drawingData = fabricCanvas.toJSON();
+  // console.log(drawingData);  // Log the drawing data for debugging
   axios.post('http://127.0.0.1:5000/submit', { drawing: drawingData })
     .then(response => {
       console.log('Drawing submitted:', response.data);
     })
     .catch(error => {
-      console.error('Error submitting drawing:', error);
+      console.error('Error submitting drawing:', error.response ? error.response.data : error.message);
     });
 };
+
+
 
 const selectPredefinedQuery = (query) => {
   // Add functionality to handle predefined queries

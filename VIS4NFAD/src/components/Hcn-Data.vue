@@ -15,12 +15,14 @@
 import * as d3 from 'd3';
 import axios from 'axios';
 import { onMounted, ref, watch } from 'vue';
-import { ElButton } from 'element-plus';
+import { useStore } from 'vuex';
 
 const chart = ref(null);
 const overview = ref(null);
 const legend = ref(null);
 const smoothness = ref(0.0);
+
+const store = useStore();
 
 onMounted(async () => {
     try {
@@ -133,15 +135,23 @@ onMounted(async () => {
             .curve(d3.curveBasis);
 
         hcn.forEach((lineData, index) => {
-            const path = chartArea.append("path")
+            const originalPath = chartArea.append("path")
                 .datum(lineData.map((d, i) => ({ x: time[i], y: d })).filter(d => d.y !== null))
                 .attr("fill", "none")
                 .attr("stroke", d3.schemeCategory10[index % 10])
                 .attr("stroke-width", 1.5)
-                .attr("class", `line line-${index}`)
+                .attr("class", `original-line original-line-${index}`)
                 .attr("d", lineGenerator);
 
-            paths.push(path);
+            const smoothedPath = chartArea.append("path")
+                .datum(lineData.map((d, i) => ({ x: time[i], y: d })).filter(d => d.y !== null))
+                .attr("fill", "none")
+                .attr("stroke", d3.schemeCategory10[index % 10])
+                .attr("stroke-width", 1.5)
+                .attr("class", `smoothed-line smoothed-line-${index}`)
+                .attr("opacity", 0.0);
+
+            paths.push({ originalPath, smoothedPath });
 
             svg.append("line")
                 .attr("x1", width + 10)
@@ -168,7 +178,9 @@ onMounted(async () => {
                 .html(`<input type="checkbox" checked="checked" id="checkbox-${index}" />`)
                 .on('change', function () {
                     const checked = d3.select(`#checkbox-${index}`).property('checked');
-                    d3.select(`.line-${index}`).style('display', checked ? null : 'none');
+                    d3.select(`.original-line-${index}`).style('display', checked ? null : 'none');
+                    d3.select(`.smoothed-line-${index}`).style('display', checked ? null : 'none');
+                    updateStore();
                 });
         });
 
@@ -188,7 +200,9 @@ onMounted(async () => {
             .style('font-size', '12px')
             .on('click', () => {
                 d3.selectAll('input[type=checkbox]').property('checked', true);
-                d3.selectAll('.line').style('display', null);
+                d3.selectAll('.original-line').style('display', null);
+                d3.selectAll('.smoothed-line').style('display', null);
+                updateStore();
             });
 
         legendContainer.append('button')
@@ -197,7 +211,9 @@ onMounted(async () => {
             .style('font-size', '12px')
             .on('click', () => {
                 d3.selectAll('input[type=checkbox]').property('checked', false);
-                d3.selectAll('.line').style('display', 'none');
+                d3.selectAll('.original-line').style('display', 'none');
+                d3.selectAll('.smoothed-line').style('display', 'none');
+                updateStore();
             });
 
         // Overview chart
@@ -250,7 +266,8 @@ onMounted(async () => {
 
             paths.forEach((path, index) => {
                 if (d3.select(`#checkbox-${index}`).property("checked")) {
-                    path.attr("d", lineGenerator);
+                    path.originalPath.attr("d", lineGenerator);
+                    path.smoothedPath.attr("d", lineGenerator);
                 }
             });
 
@@ -266,30 +283,46 @@ onMounted(async () => {
                 if (d3.select(`#checkbox-${index}`).property("checked")) {
                     const lineData = hcn[index].map((d, i) => ({ x: time[i], y: d })).filter(d => d.y !== null);
                     const interpolatedData = interpolateData(lineData, smoothness.value);
-                    path.datum(interpolatedData).attr("d", lineGenerator.curve(d3.curveBasis));
+                    path.smoothedPath.datum(interpolatedData).attr("d", lineGenerator.curve(d3.curveBasis));
+                    path.originalPath.attr("opacity", 0.5 - 0.3 * smoothness.value); // Adjust transparency
+                    path.smoothedPath.attr("opacity", 1);
                 }
             });
+            updateStore();
         });
 
+        function updateStore() {
+            const selectedData = [];
+            paths.forEach((path, index) => {
+                if (d3.select(`#checkbox-${index}`).property("checked")) {
+                    const data = path.smoothedPath.datum();
+                    selectedData.push({ index, data });
+                }
+            });
+            store.dispatch('updateSelectedSmoothedData', selectedData);
+        }
+
         function interpolateData(data, t) {
-            if (t === 1) {
-                return [
-                    { x: data[0].x, y: d3.mean(data, d => d.y) },
-                    { x: data[data.length - 1].x, y: d3.mean(data, d => d.y) }
-                ];
+            if (t === 0) {
+                return data;
             } else {
-                return data.map((d, i, a) => {
-                    if (i === 0 || i === a.length - 1) {
-                        return d;
-                    } else {
-                        const prev = a[i - 1];
-                        const next = a[i + 1];
-                        return {
-                            x: d.x,
-                            y: d.y * (1 - t) + ((prev.y + next.y) / 2) * t
-                        };
-                    }
-                });
+                const steps = Math.ceil(t * 200); // 增加平滑步数
+                let smoothedData = data;
+
+                for (let i = 0; i < steps; i++) {
+                    smoothedData = smoothedData.map((d, i, a) => {
+                        if (i === 0 || i === a.length - 1) {
+                            return d;
+                        } else {
+                            return {
+                                x: d.x,
+                                y: (a[i - 2]?.y || d.y) * 0.1 + a[i - 1].y * 0.2 + d.y * 0.4 + a[i + 1].y * 0.2 + (a[i + 2]?.y || d.y) * 0.1
+                            };
+                        }
+                    });
+                }
+
+                return smoothedData;
             }
         }
     } catch (error) {

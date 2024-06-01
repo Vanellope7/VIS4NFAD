@@ -1,32 +1,53 @@
 import json
+import os
+import glob
+from datetime import datetime
 import matplotlib.pyplot as plt
 
-# 从文件中读取JSON数据
-with open('../static/Data/drawing.json', 'r') as file:
+# 目录路径
+data_folder = '../static/Data'
+
+# 查找目录中所有的 JSON 文件
+json_files = glob.glob(os.path.join(data_folder, 'drawing_*.json'))
+
+# 如果没有找到任何文件，提示并退出
+if not json_files:
+    print("No JSON files found in the directory.")
+    exit()
+
+# 找到最新的 JSON 文件
+latest_file = max(json_files, key=os.path.getctime)
+print(f"Latest JSON file: {latest_file}")
+
+# 读取 JSON 文件
+with open(latest_file, 'r') as file:
     data = json.load(file)
 
 # 提取路径数据
-path_data = data["objects"][0]["path"]
+paths = []
+for obj in data['objects']:
+    if obj['type'] == 'path':
+        paths.append(obj['path'])
 
-# 准备绘图数据
-x_points = []
-y_points = []
+# 绘制路径
+for path in paths:
+    x = []
+    y = []
+    for command in path:
+        if command[0] == 'M' or command[0] == 'L':
+            x.append(command[1])
+            y.append(command[2])
+        elif command[0] == 'Q':
+            x.extend([command[1], command[3]])
+            y.extend([command[2], command[4]])
 
-for command in path_data:
-    if command[0] == "M" or command[0] == "L":
-        x_points.append(command[1])
-        y_points.append(command[2])
-    elif command[0] == "Q":
-        # 二次贝塞尔曲线的终点
-        x_points.append(command[3])
-        y_points.append(command[4])
+    plt.plot(x, y, marker='o')
 
-# 绘制曲线
-plt.figure(figsize=(8, 8))
-plt.plot(x_points, [-y for y in y_points], marker='o')  # 反转Y轴方向
-plt.title('Path from drawing.json')
+# 设置图形参数
+plt.title('Drawing from Latest JSON')
 plt.xlabel('X')
 plt.ylabel('Y')
 plt.grid(True)
-plt.gca().set_aspect('equal', adjustable='box')
+
+# 显示图形
 plt.show()

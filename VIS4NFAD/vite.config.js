@@ -13,6 +13,9 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  optimizeDeps: {
+    include: ['lodash/debounce']
+  },
   publicPath: process.env.NODE_ENV === 'production'
     ? '/VIS4NFAD/'
     : '/'
