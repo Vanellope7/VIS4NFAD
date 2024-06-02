@@ -16,6 +16,7 @@ import * as d3 from 'd3';
 import axios from 'axios';
 import { onMounted, ref, watch } from 'vue';
 import { useStore } from 'vuex';
+import debounce from 'lodash/debounce';
 
 const chart = ref(null);
 const overview = ref(null);
@@ -135,6 +136,8 @@ onMounted(async () => {
             .curve(d3.curveBasis);
 
         hcn.forEach((lineData, index) => {
+            const lineName = `${4043 + index}/hcn_ne001`; // 生成曲线名字
+
             const originalPath = chartArea.append("path")
                 .datum(lineData.map((d, i) => ({ x: time[i], y: d })).filter(d => d.y !== null))
                 .attr("fill", "none")
@@ -151,7 +154,7 @@ onMounted(async () => {
                 .attr("class", `smoothed-line smoothed-line-${index}`)
                 .attr("opacity", 0.0);
 
-            paths.push({ originalPath, smoothedPath });
+            paths.push({ originalPath, smoothedPath, lineName });
 
             svg.append("line")
                 .attr("x1", width + 10)
@@ -168,7 +171,7 @@ onMounted(async () => {
                 .attr("fill", "black")
                 .style("font-size", "10px")
                 .attr("transform", `translate(${margin.left},${margin.top})`)
-                .text(`${4043 + index}/hcn_ne001`);
+                .text(lineName);
 
             // 创建复选框
             d3.select(chart.value).append('div')
@@ -180,7 +183,7 @@ onMounted(async () => {
                     const checked = d3.select(`#checkbox-${index}`).property('checked');
                     d3.select(`.original-line-${index}`).style('display', checked ? null : 'none');
                     d3.select(`.smoothed-line-${index}`).style('display', checked ? null : 'none');
-                    updateStore();
+                    debouncedUpdateStore();
                 });
         });
 
@@ -202,7 +205,7 @@ onMounted(async () => {
                 d3.selectAll('input[type=checkbox]').property('checked', true);
                 d3.selectAll('.original-line').style('display', null);
                 d3.selectAll('.smoothed-line').style('display', null);
-                updateStore();
+                debouncedUpdateStore();
             });
 
         legendContainer.append('button')
@@ -213,7 +216,7 @@ onMounted(async () => {
                 d3.selectAll('input[type=checkbox]').property('checked', false);
                 d3.selectAll('.original-line').style('display', 'none');
                 d3.selectAll('.smoothed-line').style('display', 'none');
-                updateStore();
+                debouncedUpdateStore();
             });
 
         // Overview chart
@@ -278,7 +281,19 @@ onMounted(async () => {
                 .style("opacity", 0.3);
         }
 
-        watch(smoothness, () => {
+        const debouncedUpdateStore = debounce(() => {
+            const selectedData = [];
+            paths.forEach((path, index) => {
+                if (d3.select(`#checkbox-${index}`).property("checked")) {
+                    const data = path.smoothedPath.datum();
+                    selectedData.push({ name: path.lineName, data });
+                }
+            });
+            store.dispatch('updateSelectedSmoothedData', selectedData);
+        }, 300);
+
+        watch(smoothness, (newValue) => {
+            store.dispatch('updateSmoothness', newValue);
             paths.forEach((path, index) => {
                 if (d3.select(`#checkbox-${index}`).property("checked")) {
                     const lineData = hcn[index].map((d, i) => ({ x: time[i], y: d })).filter(d => d.y !== null);
@@ -288,19 +303,8 @@ onMounted(async () => {
                     path.smoothedPath.attr("opacity", 1);
                 }
             });
-            updateStore();
+            debouncedUpdateStore();
         });
-
-        function updateStore() {
-            const selectedData = [];
-            paths.forEach((path, index) => {
-                if (d3.select(`#checkbox-${index}`).property("checked")) {
-                    const data = path.smoothedPath.datum();
-                    selectedData.push({ index, data });
-                }
-            });
-            store.dispatch('updateSelectedSmoothedData', selectedData);
-        }
 
         function interpolateData(data, t) {
             if (t === 0) {

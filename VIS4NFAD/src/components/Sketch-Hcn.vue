@@ -53,6 +53,9 @@ import { ref, watch, onMounted } from 'vue';
 import axios from 'axios';
 import { fabric } from 'fabric';
 import 'element-plus/dist/index.css';
+import { useStore } from 'vuex';
+
+const store = useStore();
 
 const canvas = ref(null);
 let fabricCanvas = null;
@@ -93,7 +96,7 @@ const deleteDrawing = (index) => {
 
 const submitDrawing = () => {
   const drawingData = fabricCanvas.toJSON();
-  // console.log(drawingData);  // Log the drawing data for debugging
+  // 原有的submit功能
   axios.post('http://127.0.0.1:5000/submit', { drawing: drawingData })
     .then(response => {
       console.log('Drawing submitted:', response.data);
@@ -101,9 +104,22 @@ const submitDrawing = () => {
     .catch(error => {
       console.error('Error submitting drawing:', error.response ? error.response.data : error.message);
     });
+
+  // 新增功能：提交 selectedSmoothedData 和 smoothness
+  const selectedSmoothedData = store.state.selectedSmoothedData;
+  const smoothness = store.state.smoothness;
+
+  axios.post('http://127.0.0.1:5000/submit_smoothed_data', {
+    selectedSmoothedData: selectedSmoothedData,
+    smoothness: smoothness
+  })
+    .then(response => {
+      console.log('Smoothed data submitted:', response.data);
+    })
+    .catch(error => {
+      console.error('Error submitting smoothed data:', error.response ? error.response.data : error.message);
+    });
 };
-
-
 
 const selectPredefinedQuery = (query) => {
   // Add functionality to handle predefined queries

@@ -9,6 +9,9 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*")  # 允许跨域
 
 table_data_path = 'modules/static/Data/tableData.json'  # 使用你保存 table_data.json 文件的实际路径
+selected_smoothed_data_path = 'modules/static/Data/selectedSmoothedData.json'  # 路径用于保存 selectedSmoothedData
+
+smoothness_value = 0.0
 
 # Ensure the static/Data directory exists
 data_folder = os.path.join(app.static_folder, 'Data')
@@ -25,12 +28,12 @@ def hello_world():
 def submit_drawing():
     try:
         data = request.get_json()
-        print("Received data:", data)  # Log the received data
+        # print("Received data:", data)  # Log the received data
         if not data:
             return jsonify({"error": "No data received"}), 400
 
         drawing = data.get('drawing')
-        print("Drawing data:", drawing)  # Log the drawing data
+        # print("Drawing data:", drawing)  # Log the drawing data
         if not drawing:
             return jsonify({"error": "No drawing data provided"}), 400
 
@@ -39,15 +42,45 @@ def submit_drawing():
         # Save drawing data to file
         with open(filename, 'w') as f:
             json.dump(drawing, f)
-        print(f'Received drawing saved to {filename}')
+        # print(f'Received drawing saved to {filename}')
 
         return jsonify({"message": f"Drawing received and saved to {filename}"}), 200
     except Exception as e:
         # Log detailed error information
         import traceback
         print("Exception occurred:")
-        print(traceback.format_exc())
+        # print(traceback.format_exc())
         return jsonify({"error": "Failed to process the drawing", "details": str(e)}), 500
+
+
+@app.route('/submit_smoothed_data', methods=['POST'])
+def submit_smoothed_data():
+    try:
+        data = request.get_json()
+        # print("Received smoothed data:", data)  # Log the received data
+        if not data:
+            return jsonify({"error": "No data received"}), 400
+
+        selected_smoothed_data = data.get('selectedSmoothedData')
+        smoothness = data.get('smoothness')
+
+        # Save selectedSmoothedData to file
+        with open(selected_smoothed_data_path, 'w') as f:
+            json.dump(selected_smoothed_data, f)
+        # print(f'Selected smoothed data saved to {selected_smoothed_data_path}')
+
+        # Update smoothness value
+        global smoothness_value
+        smoothness_value = smoothness
+        print(smoothness_value)
+
+        return jsonify({"message": f"Smoothed data received and saved"}), 200
+    except Exception as e:
+        # Log detailed error information
+        import traceback
+        # print("Exception occurred:")
+        # print(traceback.format_exc())
+        return jsonify({"error": "Failed to process the smoothed data", "details": str(e)}), 500
 
 
 @app.route('/get_table_data', methods=['GET'])
