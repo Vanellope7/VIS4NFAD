@@ -50,25 +50,23 @@ for name, index, segment in tqdm(all_segments, desc="Processing segments"):
     dtw_dist = dtw_distance(drawing_gradients, segment)
     results.append((name, index, dtw_dist))
 
-# 排序并过滤相似度前10的结果
-results = sorted(results, key=lambda x: x[2])
+# 设置相似度阈值
+similarity_threshold = 170  # 根据实际情况调整此值
 
-# 过滤高度重合的曲线段
+# 过滤非高度重合并低于阈值的曲线段
 filtered_results = []
 used_indices = set()
 
 for res in results:
     name, index, dtw_dist = res
-    if all(abs(index - used_index) > len(drawing_gradients) for used_index in used_indices):
+    if dtw_dist <= similarity_threshold and all(abs(index - used_index) > len(drawing_gradients) for used_index in used_indices):
         filtered_results.append(res)
         used_indices.add(index)
-        if len(filtered_results) >= 10:
-            break
 
 for res in filtered_results:
     print(f"曲线: {res[0]}, 起始索引: {res[1]}, DTW距离: {res[2]}")
 
-# 可视化所有曲线并高亮相似度前10的曲线段
+# 可视化所有曲线并高亮相似度低于阈值的曲线段
 fig, ax = plt.subplots(figsize=(20, 8))
 
 # 绘制所有原始曲线
@@ -77,7 +75,7 @@ for curve in smoothed_data:
     measurement_values = [point['y'] for point in curve['data']]
     ax.plot(time_values, measurement_values, color='lightgray')
 
-# 高亮相似度前10的曲线段
+# 高亮相似度低于阈值的曲线段
 colors = plt.get_cmap('tab10')
 for i, (name, index, dtw_dist) in enumerate(filtered_results):
     curve = next(curve for curve in smoothed_data if curve['name'] == name)
