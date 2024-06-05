@@ -10,7 +10,7 @@ from tqdm import tqdm
 # 查找目录中最新的JSON文件并读取数据
 def load_latest_drawing_data(data_folder):
     # 查找目录中所有的 JSON 文件
-    json_files = glob.glob(os.path.join(data_folder, 'drawing_*.json'))
+    json_files = glob.glob(os.path.join(data_folder, 'drawing.json'))
 
     # 如果没有找到任何文件，提示并退出
     if not json_files:

@@ -9,7 +9,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*")  # 允许跨域
 
 table_data_path = 'modules/static/Data/tableData.json'  # 使用你保存 table_data.json 文件的实际路径
-selected_smoothed_data_path = 'modules/static/Data/selectedSmoothedData.json'  # 路径用于保存 selectedSmoothedData
+selected_smoothed_data_path = 'static/Data/selectedSmoothedData.json'  # 路径用于保存 selectedSmoothedData
 
 smoothness_value = 0.0
 
@@ -42,7 +42,7 @@ def submit_drawing():
         # Save drawing data to file
         with open(filename, 'w') as f:
             json.dump(drawing, f)
-        # print(f'Received drawing saved to {filename}')
+        print(f'Received drawing saved to {filename}')
 
         return jsonify({"message": f"Drawing received and saved to {filename}"}), 200
     except Exception as e:
@@ -72,14 +72,14 @@ def submit_smoothed_data():
         # Update smoothness value
         global smoothness_value
         smoothness_value = smoothness
-        print(smoothness_value)
+        print("smoothness: "+smoothness_value)
 
         return jsonify({"message": f"Smoothed data received and saved"}), 200
     except Exception as e:
         # Log detailed error information
         import traceback
-        # print("Exception occurred:")
-        # print(traceback.format_exc())
+        print("Exception occurred:")
+        print(traceback.format_exc())
         return jsonify({"error": "Failed to process the smoothed data", "details": str(e)}), 500
 
 

@@ -74,7 +74,7 @@ const clearCanvas = () => {
 };
 
 const saveDrawing = () => {
-  const drawing = fabricCanvas.toJSON();
+  const drawing = getCurveCoordinates();
   const thumbnail = fabricCanvas.toDataURL({
     format: 'png',
     quality: 0.5,
@@ -85,9 +85,8 @@ const saveDrawing = () => {
 
 const loadDrawing = (index) => {
   clearCanvas();
-  fabricCanvas.loadFromJSON(savedDrawings.value[index].drawing, () => {
-    fabricCanvas.renderAll();
-  });
+  const curveData = savedDrawings.value[index].drawing;
+  loadCurveFromCoordinates(curveData);
 };
 
 const deleteDrawing = (index) => {
@@ -95,8 +94,7 @@ const deleteDrawing = (index) => {
 };
 
 const submitDrawing = () => {
-  const drawingData = fabricCanvas.toJSON();
-  // 原有的submit功能
+  const drawingData = getCurveCoordinates();
   axios.post('http://127.0.0.1:5000/submit', { drawing: drawingData })
     .then(response => {
       console.log('Drawing submitted:', response.data);
@@ -105,7 +103,6 @@ const submitDrawing = () => {
       console.error('Error submitting drawing:', error.response ? error.response.data : error.message);
     });
 
-  // 新增功能：提交 selectedSmoothedData 和 smoothness
   const selectedSmoothedData = store.state.selectedSmoothedData;
   const smoothness = store.state.smoothness;
 
@@ -121,6 +118,23 @@ const submitDrawing = () => {
     });
 };
 
+const getCurveCoordinates = () => {
+  const objects = fabricCanvas.getObjects('path');
+  return objects.map(path => ({ path: path.path }));
+};
+
+const loadCurveFromCoordinates = (curveData) => {
+  curveData.forEach(data => {
+    const path = new fabric.Path(data.path, {
+      strokeWidth: 2,
+      stroke: 'black',
+      fill: 'transparent',
+    });
+    fabricCanvas.add(path);
+  });
+  fabricCanvas.renderAll();
+};
+
 const selectPredefinedQuery = (query) => {
   // Add functionality to handle predefined queries
 };
@@ -132,7 +146,6 @@ const initCanvas = () => {
     backgroundColor: '#fff',
   });
 
-  // Enable free drawing mode by default
   fabricCanvas.isDrawingMode = true;
 
   fabricCanvas.on('mouse:down', function (o) {
@@ -140,10 +153,11 @@ const initCanvas = () => {
       isDrawing = true;
       const pointer = fabricCanvas.getPointer(o.e);
       points = [{ x: pointer.x, y: pointer.y }];
-      path = new fabric.Path('M ' + pointer.x + ' ' + pointer.y + ' L ' + pointer.x + ' ' + pointer.y, {
+      path = new fabric.Path(`M ${pointer.x} ${pointer.y}`, {
         strokeWidth: 2,
         fill: 'transparent',
         stroke: 'black',
+        selectable: false,
       });
       fabricCanvas.add(path);
     }
@@ -155,9 +169,8 @@ const initCanvas = () => {
       const lastPoint = points[points.length - 1];
       if (pointer.x >= lastPoint.x) {
         points.push({ x: pointer.x, y: pointer.y });
-        const pathData = path.path[0].slice(1);
-        pathData.push(pointer.x, pointer.y);
-        path.path[0] = ['M', ...pathData];
+        const pathData = `M ${points[0].x} ${points[0].y} ` + points.map(p => `L ${p.x} ${p.y}`).join(' ');
+        path.set({ path: new fabric.Path(pathData).path });
         fabricCanvas.renderAll();
       }
     }
@@ -168,10 +181,10 @@ const initCanvas = () => {
       isDrawing = false;
       points = [];
       const pathData = path.path[0].slice(1);
-      if (pathData.length > 2) {
-        path.path[0] = ['M', ...pathData];
-      } else {
+      if (pathData.length <= 2) {
         fabricCanvas.remove(path);
+      } else {
+        path.path[0] = ['M', ...pathData];
       }
     }
   });
@@ -191,11 +204,16 @@ const initCanvas = () => {
   watch(isPenToolActive, (newVal) => {
     fabricCanvas.isDrawingMode = newVal;
     fabricCanvas.selection = !newVal;
+    fabricCanvas.forEachObject(obj => {
+      obj.selectable = !newVal;
+    });
+    fabricCanvas.renderAll();
   });
 };
 
 onMounted(() => {
   initCanvas();
+  fabricCanvas.isDrawingMode = isPenToolActive.value;
 });
 </script>
 
@@ -241,10 +259,8 @@ onMounted(() => {
 .history-section {
   width: 100%;
   height: 200px;
-  /* Maintain the original height */
   overflow-x: auto;
   overflow-y: hidden;
-  /* Hide vertical scrollbar */
   margin-top: 10px;
 }
 
@@ -276,7 +292,6 @@ onMounted(() => {
   align-items: center;
   background-color: #f9f9f9;
   flex-shrink: 0;
-  /* Prevent items from shrinking */
 }
 
 .history-item img {
@@ -305,60 +320,31 @@ onMounted(() => {
 }
 
 .dropdown {
-  position: relative;
-  display: inline-block;
+  margin-bottom: 10px;
 }
 
-.dropdown .dropbtn {
-  background-color: #f9f9f9;
-  color: black;
-  padding: 10px;
-  font-size: 16px;
-  border: none;
-  cursor: pointer;
+.dropdown-content {
+  display: flex;
+  gap: 5px;
 }
 
-.dropdown .dropdown-content {
-  display: none;
-  position: absolute;
-  background-color: #f9f9f9;
-  min-width: 160px;
-  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
-  z-index: 1;
-}
-
-.dropdown .dropdown-content button {
-  color: black;
-  padding: 12px 16px;
-  text-decoration: none;
-  display: block;
+.dropdown-content button {
   border: none;
   background: none;
-  text-align: left;
   cursor: pointer;
-}
-
-.dropdown .dropdown-content button:hover {
-  background-color: #f1f1f1;
-}
-
-.dropdown:hover .dropdown-content {
-  display: block;
-}
-
-.dropdown:hover .dropbtn {
-  background-color: #f1f1f1;
 }
 
 .similar-queries {
   display: flex;
   gap: 10px;
-  margin-top: 10px;
+  overflow-x: auto;
 }
 
 .similar-query img {
-  width: 50px;
-  height: 50px;
+  width: 70px;
+  height: 70px;
+  border: 1px solid #ccc;
+  background-color: #f9f9f9;
   cursor: pointer;
 }
 </style>

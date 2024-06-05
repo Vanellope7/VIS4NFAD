@@ -33,7 +33,7 @@ onMounted(async () => {
         const hcn = data.hcn;
         const time = data.time;
 
-        const margin = { top: 10, right: 160, bottom: 30, left: 60 },
+        const margin = { top: 10, right: 130, bottom: 30, left: 60 },
             width = 1250 - margin.left - margin.right,
             height = 600 - margin.top - margin.bottom,
             overviewHeight = 50;
@@ -200,7 +200,7 @@ onMounted(async () => {
         legendContainer.append('button')
             .text('全选')
             .attr('class', 'legend-button')
-            .style('font-size', '12px')
+            .style('font-size', '16px')
             .on('click', () => {
                 d3.selectAll('input[type=checkbox]').property('checked', true);
                 d3.selectAll('.original-line').style('display', null);
@@ -211,13 +211,15 @@ onMounted(async () => {
         legendContainer.append('button')
             .text('清空')
             .attr('class', 'legend-button')
-            .style('font-size', '12px')
+            .style('font-size', '16px')
             .on('click', () => {
                 d3.selectAll('input[type=checkbox]').property('checked', false);
                 d3.selectAll('.original-line').style('display', 'none');
                 d3.selectAll('.smoothed-line').style('display', 'none');
                 debouncedUpdateStore();
             });
+        
+       
 
         // Overview chart
         const overviewSvg = d3.select(overview.value)
