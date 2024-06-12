@@ -11,11 +11,14 @@
   },
   "dependencies": {
     "axios": "^1.6.8",
+    "chart.js": "^4.4.3",
     "d3": "^7.9.0",
     "fabric": "^5.3.0",
     "lodash": "^4.17.21",
+    "socket.io-client": "^4.7.5",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0",
+    "vue-socket.io": "^3.0.10",
     "vuex": "^4.1.0"
   },
   "devDependencies": {

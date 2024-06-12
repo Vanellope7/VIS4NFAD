@@ -3,13 +3,17 @@ import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from modules.Combined_Match import run_similarity_analysis
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
-socketio = SocketIO(app, cors_allowed_origins="*")  # 允许跨域
+socketio = SocketIO(app, cors_allowed_origins="*")  # Allow cross-origin requests
 
-table_data_path = 'modules/static/Data/tableData.json'  # 使用你保存 table_data.json 文件的实际路径
-selected_smoothed_data_path = 'static/Data/selectedSmoothedData.json'  # 路径用于保存 selectedSmoothedData
+table_data_path = 'static/Data/tableData.json'  # Path to save tableData.json
+selected_smoothed_data_path = 'static/Data/selectedSmoothedData.json'  # Path to save selectedSmoothedData
+drawing_file_path = 'static/Data/drawing.json'
+smoothed_data_file_path = 'static/Data/selectedSmoothedData.json'
+output_file = 'static/Data/tableData.json'
 
 smoothness_value = 0.0
 
@@ -18,26 +22,22 @@ data_folder = os.path.join(app.static_folder, 'Data')
 if not os.path.exists(data_folder):
     os.makedirs(data_folder)
 
-
 @app.route('/')
 def hello_world():
     return 'Hello World!'
-
 
 @app.route('/submit', methods=['POST'])
 def submit_drawing():
     try:
         data = request.get_json()
-        # print("Received data:", data)  # Log the received data
         if not data:
             return jsonify({"error": "No data received"}), 400
 
         drawing = data.get('drawing')
-        # print("Drawing data:", drawing)  # Log the drawing data
         if not drawing:
             return jsonify({"error": "No drawing data provided"}), 400
 
-        filename = os.path.join(data_folder, f'drawing.json')
+        filename = os.path.join(data_folder, 'drawing.json')
 
         # Save drawing data to file
         with open(filename, 'w') as f:
@@ -46,18 +46,15 @@ def submit_drawing():
 
         return jsonify({"message": f"Drawing received and saved to {filename}"}), 200
     except Exception as e:
-        # Log detailed error information
         import traceback
         print("Exception occurred:")
-        # print(traceback.format_exc())
+        print(traceback.format_exc())
         return jsonify({"error": "Failed to process the drawing", "details": str(e)}), 500
-
 
 @app.route('/submit_smoothed_data', methods=['POST'])
 def submit_smoothed_data():
     try:
         data = request.get_json()
-        # print("Received smoothed data:", data)  # Log the received data
         if not data:
             return jsonify({"error": "No data received"}), 400
 
@@ -67,21 +64,23 @@ def submit_smoothed_data():
         # Save selectedSmoothedData to file
         with open(selected_smoothed_data_path, 'w') as f:
             json.dump(selected_smoothed_data, f)
-        # print(f'Selected smoothed data saved to {selected_smoothed_data_path}')
 
-        # Update smoothness value
         global smoothness_value
         smoothness_value = smoothness
-        print("smoothness: "+smoothness_value)
+
+        def run_analysis():
+            for progress in run_similarity_analysis(drawing_file_path, smoothed_data_file_path, output_file, smoothness_value):
+                socketio.emit('progress_update', {'progress': progress})
+            socketio.emit('processing_complete', {'message': 'Processing complete', 'status': 'complete'})
+
+        socketio.start_background_task(target=run_analysis)
 
         return jsonify({"message": f"Smoothed data received and saved"}), 200
     except Exception as e:
-        # Log detailed error information
         import traceback
         print("Exception occurred:")
         print(traceback.format_exc())
         return jsonify({"error": "Failed to process the smoothed data", "details": str(e)}), 500
-
 
 @app.route('/get_table_data', methods=['GET'])
 def get_table_data():
@@ -91,7 +90,6 @@ def get_table_data():
         return jsonify(table_data)
     except Exception as e:
         return jsonify({"error": "Failed to load table data", "details": str(e)}), 500
-
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)

@@ -14,7 +14,7 @@
 <script setup>
 import * as d3 from 'd3';
 import axios from 'axios';
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, computed } from 'vue';
 import { useStore } from 'vuex';
 import debounce from 'lodash/debounce';
 
@@ -24,6 +24,8 @@ const legend = ref(null);
 const smoothness = ref(0.0);
 
 const store = useStore();
+
+const selectedData = computed(() => store.state.selectedSmoothedData);
 
 onMounted(async () => {
     try {
@@ -331,6 +333,25 @@ onMounted(async () => {
                 return smoothedData;
             }
         }
+
+        // Watch for changes in selectedData and highlight the new data
+        watch(selectedData, (newData) => {
+            // Clear existing highlights
+            chartArea.selectAll('.highlight-line').remove();
+
+            if (newData.TimeValues && newData.MeasurementValues) {
+                const highlightData = newData.TimeValues.map((d, i) => ({ x: d, y: newData.MeasurementValues[i] }));
+
+                // Add highlight line
+                chartArea.append('path')
+                    .datum(highlightData)
+                    .attr('class', 'highlight-line')
+                    .attr('fill', 'none')
+                    .attr('stroke', 'red')
+                    .attr('stroke-width', 3)
+                    .attr('d', lineGenerator);
+            }
+        });
     } catch (error) {
         console.error("Error fetching data:", error);
     }
