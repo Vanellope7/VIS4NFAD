@@ -4,9 +4,9 @@
       <div class="query-title">Query</div>
       <div class="header-buttons">
         <el-switch v-model="isPenToolActive" active-text="Pen" inactive-text="Zoom" />
-        <el-button round @click="clearCanvas" size="small" type="danger">Clear</el-button>
-        <el-button round @click="saveDrawing" size="small" type="success">Save</el-button>
-        <el-button round @click="submitDrawing" size="small" type="primary">Submit</el-button>
+        <el-button round @click="clearCanvas" size="small" type="danger"><el-icon><Close/></el-icon></el-button>
+        <el-button round @click="saveDrawing" size="small" type="success"><el-icon><Plus/></el-icon></el-button>
+        <el-button round @click="submitDrawing" size="small" type="primary"><el-icon><Upload /></el-icon></el-button>
       </div>
     </div>
     <el-row class="slider-container" align="middle">
@@ -32,7 +32,7 @@
           <div class="history-content">
             <div v-for="(drawing, index) in savedDrawings" :key="index" class="history-item">
               <img :src="drawing.thumbnail" :alt="'Drawing ' + (index + 1)" @click="loadDrawing(index)">
-              <button class="delete-button" @click="deleteDrawing(index)">Delete</button>
+              <button class="delete-button" @click="deleteDrawing(index)"><el-icon><CloseBold /></el-icon></button>
             </div>
           </div>
         </div>
@@ -62,6 +62,7 @@ import { fabric } from 'fabric';
 import 'element-plus/dist/index.css';
 import { useStore } from 'vuex';
 import { io } from 'socket.io-client';
+import { Plus, Close, Upload, CloseBold } from '@element-plus/icons-vue'
 
 const store = useStore();
 
@@ -131,9 +132,6 @@ const submitDrawing = () => {
 };
 
 
-
-
-
 const getCurveCoordinates = () => {
   const objects = fabricCanvas.getObjects('path');
   return objects.map(path => ({ path: path.path }));
@@ -171,7 +169,7 @@ const drawGrid = () => {
 const initCanvas = () => {
   fabricCanvas = new fabric.Canvas(canvas.value, {
     width: 370,
-    height: 400,
+    height: 350,
     backgroundColor: '#fff',
   });
 

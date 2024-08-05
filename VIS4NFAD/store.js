@@ -3,6 +3,7 @@ import axios from 'axios';
 
 export const store = createStore({
   state: {
+    highlightedSegments: [], // 存储高亮段及其异常信息
     selectedSmoothedData: [],
     smoothness: 0.0,
     isProcessing: false,
@@ -10,8 +11,23 @@ export const store = createStore({
     tableData: [],
   },
   mutations: {
-    setSelectedSmoothedData(state, payload) {
-      state.selectedSmoothedData = payload;
+    updateHighlightedSegment(state, { index, type, description }) {
+      if (state.highlightedSegments[index]) {
+        state.highlightedSegments[index].type = type;
+        state.highlightedSegments[index].description = description;
+      }
+    },
+    setHighlightedSegments(state, segments) {
+      state.highlightedSegments = segments;
+    },
+    removeHighlightedSegmentById(state, id) {
+      state.highlightedSegments = state.highlightedSegments.filter(segment => segment.id !== id);
+    },
+    addHighlightedSegment(state, segment) {
+      state.highlightedSegments.push(segment);
+    },
+    removeHighlightedSegment(state, segment) {
+      state.highlightedSegments = state.highlightedSegments.filter(s => s.name !== segment.name);
     },
     setSmoothness(state, payload) {
       state.smoothness = payload;
@@ -28,6 +44,9 @@ export const store = createStore({
     clearTableData(state) {
       state.tableData = [];
     },
+    updateSelectedSmoothedData(state, data) {
+      state.selectedSmoothedData = data;
+    },
   },
   actions: {
     fetchData({ commit }) {
@@ -39,12 +58,27 @@ export const store = createStore({
           console.error('Error fetching table data:', error);
         });
     },
-    updateSelectedSmoothedData({ commit }, data) {
-      commit('setSelectedSmoothedData', data);
+    updateHighlightedSegment({ commit }, payload) {
+      commit('updateHighlightedSegment', payload);
+    },
+    setHighlightedSegments({ commit }, segments) {
+      commit('setHighlightedSegments', segments);
+    },
+    removeHighlightedSegmentById({ commit }, id) {
+      commit('removeHighlightedSegmentById', id);
+    },
+    addHighlightedSegment({ commit }, segment) {
+      commit('addHighlightedSegment', segment);
+    },
+    removeHighlightedSegment({ commit }, segment) {
+      commit('removeHighlightedSegment', segment);
     },
     updateSmoothness({ commit }, smoothness) {
       commit('setSmoothness', smoothness);
-    }
+    },
+    updateSelectedSmoothedData({ commit }, data) {
+      commit('updateSelectedSmoothedData', data);
+    },
   }
 });
 

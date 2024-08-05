@@ -68,7 +68,7 @@ def run_similarity_analysis(drawing_file_path, smoothed_data_file_path, output_f
         yield int((i + 1) / total_segments * 100)  # Yield progress
 
     # Filter segments based on similarity threshold
-    similarity_threshold = 0.85
+    similarity_threshold = 0.80
     filtered_results = [res for res in results if res[2] >= similarity_threshold]
 
     # If no segments meet the threshold, select the top 10 highest similarity segments
